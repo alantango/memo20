@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import frc.robot.commands.AutoForward;
 import frc.robot.commands.AutoOutput;
 import frc.robot.commands.AutoSpin;
@@ -32,8 +33,8 @@ import frc.robot.subsystems.Spinner;
 public class Robot extends TimedRobot {
   private static final String kDefaultAuto = "Forward 1 sec 25%";
   // private static final String kCustomAuto = "My Auto";
-  private String m_autoSelected;
-  private final SendableChooser<String> m_chooser = new SendableChooser<>();
+  private Command m_autoSelected;
+  private final SendableChooser<Command> m_chooser = new SendableChooser<>();
 
   public static DriveTrain m_drive = new DriveTrain();
   public static Intake m_intake = new Intake();
@@ -52,9 +53,13 @@ public class Robot extends TimedRobot {
     // m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     // m_chooser.addOption("My Auto", kCustomAuto);
     // SmartDashboard.putData("Auto choices", m_chooser);
-    m_chooser.addOption("Spin 1 sec 25%", "AutoSpin()");
-    m_chooser.addOption("Forward 1 sec 25%", "AutoForward()");
-    m_chooser.addOption("Release balls", "ReleaseBalls()");
+    m_chooser.addOption("Spin 1 sec 25%", new AutoSpin());
+    m_chooser.addOption("Forward 1 sec 25%", new AutoForward());
+    m_chooser.addOption("Release balls", new SequentialCommandGroup(
+                                          new AutoForward(), 
+                                          new AutoSpin(), 
+                                          new AutoOutput()));
+                                          
     SmartDashboard.putData("AutoChoices", m_chooser);
   }
 
@@ -93,24 +98,8 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
-    SmartDashboard.getString("AutoChoices", kDefaultAuto);
-    // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
-    switch (m_autoSelected) {
-    case "Spin 1 sec 25%":
-      // Put custom auto code here
-      new AutoSpin();
-      break;
-    case "Forward 1 sec 25%":
-      new AutoForward();
-      // Put default auto code here
-      break;
-    case "Release balls":
-      new AutoForward();
-      new AutoSpin();
-      new AutoOutput();
-      break;
-    }
+    m_autoSelected.schedule();
   }
 
   /**
@@ -121,12 +110,23 @@ public class Robot extends TimedRobot {
 
   }
 
+  @Override
+  public void teleopInit() {
+    m_drive.setDefaultCommand(defaultCom);
+  }
+
   /**
    * This function is called periodically during operator control.
    */
   @Override
   public void teleopPeriodic() {
-    m_drive.setDefaultCommand(defaultCom);
+    
+  }
+
+  @Override
+  public void testInit() {
+    CommandScheduler.getInstance().cancelAll();
+    
   }
 
   /**
